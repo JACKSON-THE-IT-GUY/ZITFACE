@@ -1,0 +1,16 @@
+@import "tailwindcss";
+
+/* This hides the scrollbar but keeps the swipe functionality */
+
+
+/* This hides the scrollbar but keeps the swipe functionality */
+
+@layer utilities {
+    .no-scrollbar::-webkit-scrollbar {
+        display: none;
+    }
+    .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+}

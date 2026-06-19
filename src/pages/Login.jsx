@@ -2,7 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 
 // Try this relative path - it goes up one level to 'src' then into 'assets'
-import zitfaceLogo from "../assets/logo.png"; 
+import zitfaceLogo from "../assets/logo.png";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -10,20 +10,20 @@ const Login = () => {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4 font-sans">
       <div className="bg-white border border-gray-300 w-full max-w-[350px] p-10 flex flex-col items-center shadow-sm">
-        
+
         <div className="mb-8 text-center">
           {/* If the image still breaks, this alt text will show up instead of a blank page */}
-          <img 
-            src={zitfaceLogo} 
-            alt="Zitface Logo" 
-            className="h-20 w-auto object-contain mx-auto mb-2" 
-            onError={(e) => { e.target.style.display = 'none'; }} 
+          <img
+            src={zitfaceLogo}
+            alt="Zitface Logo"
+            className="h-20 w-auto object-contain mx-auto mb-2"
+            onError={(e) => { e.target.style.display = 'none'; }}
           />
           <h1 className="text-4xl font-black text-[#003366] italic tracking-tighter">
             ZIT<span className="text-[#FFCC00]">FACE</span>
           </h1>
           <p className="text-[10px] font-bold text-gray-400 tracking-[0.2em] uppercase mt-1">
-            Copperbelt University
+            University Connect
           </p>
         </div>
 
@@ -69,7 +69,7 @@ const Login = () => {
       {/* Sign Up Box */}
       <div className="bg-white border border-gray-300 w-full max-w-[350px] p-6 mt-3 text-center shadow-sm">
         <p className="text-sm text-gray-600">
-          New to CBU Connect?{" "}
+          New to University Connect?{" "}
           <span
             onClick={() => navigate("/signup")}
             className="text-[#003366] font-bold cursor-pointer hover:underline"

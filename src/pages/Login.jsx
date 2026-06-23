@@ -1,11 +1,31 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { login } from "../api/auth";
 
 // Try this relative path - it goes up one level to 'src' then into 'assets'
 import zitfaceLogo from "../assets/logo.png";
 
 const Login = () => {
   const navigate = useNavigate();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setError("");
+    setLoading(true);
+
+    try {
+      await login({ email, password });
+      navigate("/home");
+    } catch (err) {
+      setError(err.message || "Login failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4 font-sans">
@@ -27,25 +47,34 @@ const Login = () => {
           </p>
         </div>
 
-        {/* ... rest of your form code stays the same ... */}
+        {error && (
+          <div className="w-full bg-red-100 border border-red-200 text-red-700 p-2 rounded-sm text-xs text-center">
+            {error}
+          </div>
+        )}
 
-        <form onSubmit={() => navigate("/home")} className="w-full space-y-2">
+        <form onSubmit={handleSubmit} className="w-full space-y-2">
           <input
-            type="text"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             placeholder="Student ID or CBU Email"
             className="w-full bg-gray-50 border border-gray-300 p-2.5 text-xs rounded-sm focus:border-[#003366] outline-none transition-all"
           />
           <input
             type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
             placeholder="Password"
             className="w-full bg-gray-50 border border-gray-300 p-2.5 text-xs rounded-sm focus:border-[#003366] outline-none transition-all"
           />
 
           <button
             type="submit"
-            className="w-full bg-[#003366] hover:bg-[#002244] text-white font-bold py-2 rounded-md text-sm transition-colors mt-4 shadow-md"
+            disabled={loading}
+            className="w-full bg-[#003366] hover:bg-[#002244] text-white font-bold py-2 rounded-md text-sm transition-colors mt-4 shadow-md disabled:opacity-60"
           >
-            Log In
+            {loading ? "Logging in..." : "Log In"}
           </button>
 
           {/* Divider */}

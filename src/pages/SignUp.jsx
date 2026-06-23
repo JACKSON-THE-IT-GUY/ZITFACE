@@ -1,8 +1,29 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { register } from '../api/auth';
 
 const SignUp = () => {
   const navigate = useNavigate();
+  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setError('');
+    setLoading(true);
+
+    try {
+      await register({ username, email, password });
+      navigate('/home');
+    } catch (err) {
+      setError(err.message || 'Registration failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4 font-sans">
@@ -17,15 +38,25 @@ const SignUp = () => {
           </p>
         </div>
 
-        <form onSubmit={() => navigate('/')} className="w-full space-y-2">
+        {error && (
+          <div className="w-full bg-red-100 border border-red-200 text-red-700 p-2 rounded-sm text-xs text-center">
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="w-full space-y-2">
           <input 
-            type="email" 
-            placeholder="University Email (@cbu.ac.zm)" 
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="Full Name"
             className="w-full bg-gray-50 border border-gray-300 p-2.5 text-xs rounded-sm focus:border-[#003366] outline-none"
           />
           <input 
-            type="text" 
-            placeholder="Full Name" 
+            type="email" 
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="University Email (@cbu.ac.zm)" 
             className="w-full bg-gray-50 border border-gray-300 p-2.5 text-xs rounded-sm focus:border-[#003366] outline-none"
           />
           <input 
@@ -46,6 +77,8 @@ const SignUp = () => {
 
           <input 
             type="password" 
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
             placeholder="Password" 
             className="w-full bg-gray-50 border border-gray-300 p-2.5 text-xs rounded-sm focus:border-[#003366] outline-none"
           />
@@ -56,9 +89,10 @@ const SignUp = () => {
           
           <button 
             type="submit"
-            className="w-full bg-[#003366] hover:bg-[#002244] text-white font-bold py-2 rounded-md text-sm transition-colors shadow-md"
+            disabled={loading}
+            className="w-full bg-[#003366] hover:bg-[#002244] text-white font-bold py-2 rounded-md text-sm transition-colors shadow-md disabled:opacity-60"
           >
-            Sign Up
+            {loading ? 'Signing up...' : 'Sign Up'}
           </button>
         </form>
       </div>

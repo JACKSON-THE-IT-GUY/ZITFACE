@@ -1,69 +1,196 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import Layout from '../components/Layout';
-import { Edit, Search } from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import Layout from "../components/Layout";
+import { Send, Search, ChevronLeft, MoreVertical, ShieldAlert, Circle } from "lucide-react";
 
 const Messages = () => {
-  const navigate = useNavigate();
+  const [activeChat, setActiveChat] = useState(null);
+  const [typedMessage, setTypedMessage] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [conversations, setConversations] = useState([]);
+  const [chatHistory, setChatHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
-  // 1. Move chats into State so we can reorder them
-  const [chats, setChats] = useState([
-    { id: 1, name: "Phanciah", message: "Did you finish the project?", time: "2m ago", unread: true },
-    { id: 2, name: "SBIT Group", message: "Class is at 14:00 today.", time: "1h ago", unread: false },
-    { id: 3, name: "Engineering Society", message: "New hackathon date announced!", time: "3h ago", unread: false }
-  ]);
+  // 📡 FETCH LIVE CONVERSATION LIST ON INITIAL MOUNT
+  useEffect(() => {
+    const fetchInbox = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch('/api/messages/inbox', { // Endpoint tailored to get user's recent chats
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setConversations(data);
+        }
+      } catch (err) {
+        console.error("Error connecting to chat provider:", err);
+      }
+    };
+    fetchInbox();
+  }, []);
 
-  // 2. Function to "Bump" a chat to the top (Call this when a message is sent)
-  const handleChatClick = (chatId) => {
-    // For now, we just navigate. 
-    // In a full app, sending a message would trigger this reorder logic.
-    navigate(`/chat/${chatId}`);
+  // 🔄 FETCH CHAT STREAM WHEN A STUDENT TARGET IS CHANGED
+  useEffect(() => {
+    if (!activeChat) return;
+
+    const loadChatLog = async () => {
+      setLoadingHistory(true);
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`/api/messages/${activeChat.conversationId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setChatHistory(data);
+        }
+      } catch (err) {
+        console.error("Failed loading backend message logs:", err);
+      } finally {
+        setLoadingHistory(false);
+      }
+    };
+
+    loadChatLog();
+    
+    // Optional polling interval to simulate live incoming chats without WebSockets running yet
+    const interval = setInterval(loadChatLog, 4000); 
+    return () => clearInterval(interval);
+  }, [activeChat]);
+
+  // 📤 POST MESSAGE DISPATCH
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    if (!typedMessage.trim() || !activeChat) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/messages', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          conversationId: activeChat.conversationId,
+          recipientId: activeChat.user._id,
+          text: typedMessage.trim()
+        })
+      });
+
+      if (res.ok) {
+        const newMsg = await res.json();
+        setChatHistory((prev) => [...prev, newMsg]); // Append immediately to layout array
+        setTypedMessage("");
+      }
+    } catch (err) {
+      console.error("Message delivery failed:", err);
+    }
   };
+
+  const filteredChats = conversations.filter(c => 
+    c.user?.username?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <Layout>
-      <div className="p-4">
-        <div className="flex items-center justify-between mb-6 px-1">
-          <h2 className="text-2xl font-bold text-gray-900">Chats</h2>
-          <div className="flex gap-3">
-             <div className="bg-[#003366]/10 p-2 rounded-full text-[#003366] relative">
-                <Edit size={20} />
-             </div>
+      <div className="h-[calc(100vh-120px)] max-w-5xl mx-auto bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden flex relative mt-2">
+        
+        {/* INBOX SIDEBAR */}
+        <div className={`w-full md:w-80 border-r border-gray-100 flex flex-col h-full bg-white ${activeChat ? "hidden md:flex" : "flex"}`}>
+          <div className="p-4 border-b border-gray-50 shrink-0">
+            <h2 className="font-black text-xl text-[#003366] italic tracking-tight mb-3">Inbox</h2>
+            <div className="flex items-center bg-gray-50 border border-gray-100 rounded-xl px-3 py-2 text-xs focus-within:bg-white focus-within:border-[#003366]/40 transition-all">
+              <Search size={14} className="text-gray-400 mr-2" />
+              <input 
+                type="text"
+                placeholder="Search conversations..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="bg-transparent border-none outline-none w-full text-gray-700 font-medium"
+              />
+            </div>
+          </div>
+
+          <div className="flex-grow overflow-y-auto p-2 space-y-1">
+            {filteredChats.map((chat) => (
+              <div 
+                key={chat.conversationId}
+                onClick={() => setActiveChat(chat)}
+                className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all ${
+                  activeChat?.conversationId === chat.conversationId ? "bg-[#003366]/5" : "hover:bg-gray-50"
+                }`}
+              >
+                <div className="w-10 h-10 rounded-full bg-gray-100 text-[#003366] font-black flex items-center justify-center border text-sm shadow-inner">
+                  {chat.user?.username ? chat.user.username[0].toUpperCase() : 'U'}
+                </div>
+                <div className="flex-grow min-w-0">
+                  <h4 className="text-xs font-black text-gray-800 truncate">{chat.user?.username}</h4>
+                  <p className="text-[11px] text-gray-500 truncate">{chat.lastMessage}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* Search Bar */}
-        <div className="relative mb-6">
-          <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
-          <input 
-            placeholder="Search messages..." 
-            className="w-full bg-gray-100 border-none rounded-full py-2.5 pl-10 pr-4 text-sm outline-none focus:ring-1 focus:ring-[#003366]"
-          />
-        </div>
-
-        {/* Chat List */}
-        <div className="space-y-1">
-          {chats.map(chat => (
-            <div 
-              key={chat.id} 
-              onClick={() => handleChatClick(chat.id)}
-              className="flex items-center gap-4 p-3 hover:bg-gray-100 rounded-2xl cursor-pointer transition-all active:scale-[0.98]"
-            >
-              <div className="w-14 h-14 bg-[#003366] rounded-full flex-shrink-0 border-2 border-white shadow-sm flex items-center justify-center text-white font-bold text-xl">
-                {chat.name[0]}
-              </div>
-              <div className="flex-grow border-b border-gray-50 pb-2">
-                <div className="flex justify-between items-center mb-1">
-                  <h3 className={`text-sm ${chat.unread ? 'font-bold' : 'font-semibold'} text-gray-900`}>{chat.name}</h3>
-                  <span className={`text-[10px] ${chat.unread ? 'text-[#003366] font-bold' : 'text-gray-400'}`}>{chat.time}</span>
+        {/* ACTIVE MAIN CHAT VIEW */}
+        <div className={`flex-grow flex flex-col h-full bg-gray-50/30 ${!activeChat ? "hidden md:flex items-center justify-center" : "flex"}`}>
+          {activeChat ? (
+            <>
+              <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between shrink-0 shadow-sm">
+                <div className="flex items-center gap-3 min-w-0">
+                  <button onClick={() => setActiveChat(null)} className="md:hidden p-1 text-gray-500">
+                    <ChevronLeft size={20} />
+                  </button>
+                  <div className="w-9 h-9 rounded-full bg-[#003366] text-white font-black text-xs flex items-center justify-center">
+                    {activeChat.user?.username ? activeChat.user.username[0].toUpperCase() : 'U'}
+                  </div>
+                  <div>
+                    <h3 className="font-black text-xs text-gray-800">{activeChat.user?.username}</h3>
+                  </div>
                 </div>
-                <p className={`text-xs truncate max-w-[200px] ${chat.unread ? 'font-bold text-black' : 'text-gray-500'}`}>
-                  {chat.message}
-                </p>
               </div>
-              {chat.unread && <div className="w-2.5 h-2.5 bg-[#003366] rounded-full shadow-sm" />}
+
+              {/* Chat log stream displaying backend records */}
+              <div className="flex-grow overflow-y-auto p-4 space-y-3">
+                {loadingHistory ? (
+                  <div className="text-center text-[10px] text-gray-400 font-bold uppercase tracking-wider animate-pulse py-10">Syncing chat log...</div>
+                ) : (
+                  chatHistory.map((msg) => {
+                    // Check local token decode string to match current user context
+                    const isMe = msg.sender === localStorage.getItem('userId') || msg.isMe; 
+                    return (
+                      <div key={msg._id || msg.id} className={`flex flex-col max-w-[80%] ${isMe ? "ml-auto items-end" : "mr-auto items-start"}`}>
+                        <div className={`px-4 py-2 rounded-2xl text-[13px] border shadow-sm ${
+                          isMe ? "bg-[#003366] text-white rounded-br-none border-[#002244]" : "bg-white text-gray-800 rounded-bl-none border-gray-100"
+                        }`}>
+                          {msg.text}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              <form onSubmit={handleSendMessage} className="p-3 bg-white border-t border-gray-100 flex items-center gap-2 shrink-0">
+                <input 
+                  type="text"
+                  value={typedMessage}
+                  onChange={(e) => setTypedMessage(e.target.value)}
+                  placeholder="Type your message..."
+                  className="flex-grow bg-gray-50 rounded-xl px-4 py-2 text-xs outline-none border focus:border-[#003366]/20 focus:bg-white transition-all"
+                />
+                <button type="submit" disabled={!typedMessage.trim()} className="bg-[#003366] text-white p-2 rounded-xl disabled:opacity-30">
+                  <Send size={14} />
+                </button>
+              </form>
+            </>
+          ) : (
+            <div className="text-center p-6 select-none">
+              <div className="w-16 h-16 bg-[#003366]/5 text-[#003366] rounded-full flex items-center justify-center mx-auto mb-3 text-xl">💬</div>
+              <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Select a Conversation</h3>
             </div>
-          ))}
+          )}
         </div>
       </div>
     </Layout>

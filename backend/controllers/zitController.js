@@ -4,19 +4,21 @@ const Zit = require('../models/Zit');
 exports.createZit = async (req, res) => {
     try {
         const { content, image } = req.body;
-        
+
         if (!content) {
             return res.status(400).json({ message: 'Content is required' });
         }
 
-        // 1. Create the document in the database using req.user.id (from your auth middleware)
+        if (!req.user?.id) {
+            return res.status(401).json({ message: 'Authentication required' });
+        }
+
         const newZit = await Zit.create({
-            user: req.user.id, 
+            user: req.user.id,
             content,
             image: image || ''
         });
 
-        // 2. Populate user fields cleanly on the created document instance
         const populatedZit = await newZit.populate('user', 'username profilePicture');
 
         res.status(201).json(populatedZit);
@@ -29,6 +31,13 @@ exports.createZit = async (req, res) => {
 // Get all posts for the timeline feed
 exports.getAllZits = async (req, res) => {
     try {
-        // Fetch posts and populate sender profile information
         const zits = await Zit.find()
             .populate('user', 'username profilePicture')
+            .sort({ createdAt: -1 });
+
+        res.status(200).json(zits);
+    } catch (error) {
+        console.error('Error fetching zits:', error.message);
+        res.status(500).json({ message: 'Server error while fetching zits' });
+    }
+};

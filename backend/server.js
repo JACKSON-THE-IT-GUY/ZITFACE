@@ -1,51 +1,54 @@
-require('dotenv').config();
+const path = require('path');
+// 1. Force explicit loading of the .env file from the current directory
+require('dotenv').config({ path: path.join(__dirname, '.env') });
+
+// 2. Immediate Debug Verification Line
+console.log("DEBUG - Loaded URL Check:", process.env.MONGO_URL ? "FOUND" : "NOT FOUND (UNDEFINED)");
+
 const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
 const cors = require('cors');
 const connectDB = require('./config/db');
+
+// Import your application routes (Clean & Unique)
 const authRoutes = require('./routes/auth');
-// Import the new zits route explicitly here:
 const zitRoutes = require('./routes/zits'); 
 
 const app = express();
+const PORT = process.env.PORT || 5001;
 
-// Fire up database connection
-connectDB();
+// 3. Connect to MongoDB Atlas Cluster
+connectDB().catch(err => {
+    console.error("Critical connection block encountered. Running in offline/fallback mode.");
+});
 
+// 4. Global Middleware Setup
 app.use(cors({
-  origin: "http://localhost:5173", 
-  methods: ["GET", "POST", "PUT", "DELETE"],
-  credentials: true
+    origin: 'http://localhost:5173', // Points directly to your frontend Vite server
+    credentials: true
 }));
-
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// Mount Routes
+// 5. REST API Route Definitions
 app.use('/api/auth', authRoutes);
-app.use('/api/zits', zitRoutes); // Use the variable here
+app.use('/api/zits', zitRoutes); 
 
-const server = http.createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: "http://localhost:5173",
-    methods: ["GET", "POST"]
-  }
-});
-
+// Root Status Check Route
 app.get('/', (req, res) => {
-  res.send('Zitface Backend API is running smoothly.');
+    res.status(200).json({ 
+        status: "Online", 
+        message: "Zitface API Gateway is running smoothly." 
+    });
 });
 
-io.on('connection', (socket) => {
-  console.log(`User connected to socket: ${socket.id}`);
-  
-  socket.on('disconnect', () => {
-    console.log(`User disconnected: ${socket.id}`);
-  });
+// Global Fallback Error Handler
+app.use((err, req, res, next) => {
+    console.error("Unhandled Server Error:", err.stack);
+    res.status(500).json({ error: "Internal Server Error during transaction." });
 });
 
-const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+// 6. Fire up Gateway Listener
+// Change this line at the bottom of backend/server.js
+app.listen(PORT, '127.0.0.1', () => {
+    console.log(`Server is running securely on http://127.0.0.1:${PORT}`);
 });
